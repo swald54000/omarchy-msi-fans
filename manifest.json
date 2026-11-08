@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "swald.fans",
+  "name": "MSI Fans",
+  "version": "2.1.0",
+  "author": "Sébastien Wald",
+  "description": "Modes ventilateurs, Cooler Boost et performance des portables MSI (msi-ec)",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Ventilateurs",
+    "description": "Modes ventilateurs, Cooler Boost et performance des portables MSI (msi-ec)",
+    "category": "System",
+    "allowMultiple": false
+  }
+}
