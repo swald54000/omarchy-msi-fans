@@ -128,7 +128,8 @@ function validAction(attr, value, status) {
 // Message affiché dans le panneau après une écriture ; "" si elle a réussi.
 function writeError(exitCode, stderr) {
   if (Number(exitCode) === 0) return ""
-  if (String(stderr || "").indexOf("Permission denied") !== -1)
+  var err = String(stderr || "")
+  if (err.indexOf("Permission denied") !== -1 || err.indexOf("Permission non accordée") !== -1)
     return "droits insuffisants : reconnectez-vous après l'installation du correctif 1"
   return "écriture impossible"
 }

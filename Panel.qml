@@ -61,7 +61,7 @@ Panel {
   readonly property var shiftModes: words(status.shift_modes)
   readonly property bool boosting: status.cooler_boost === "on"
 
-  // Every selectable button, in panel order, for keyboard navigation.
+  // Chaque bouton sélectionnable, dans l'ordre du panneau, pour la navigation au clavier.
   readonly property var actions: {
     var list = []
     if (feat.curve) {
@@ -116,7 +116,7 @@ Panel {
     if (!hwmonProc.running) hwmonProc.running = true
   }
 
-  // Re-read every sysfs file, then record one history sample.
+  // Relit chaque fichier sysfs, puis enregistre un échantillon d'historique.
   function sample() {
     var files = [cpuTempFile, cpuSpeedFile, gpuTempFile, gpuSpeedFile, gpuRuntimeFile,
                  cpuCurveFile, gpuCurveFile, cpuHystFile, gpuHystFile, usbFile,
@@ -260,6 +260,8 @@ Panel {
 
   Process {
     id: actionProc
+    // Messages d'erreur de sh en anglais, pour que Model.writeError les reconnaisse.
+    environment: ({ LC_ALL: "C", LANG: "C" })
     stderr: StdioCollector {
       waitForEnd: true
       onStreamFinished: { root.actionErr = text; root.finishAction() }
@@ -267,8 +269,8 @@ Panel {
     onExited: function(exitCode, exitStatus) { root.actionExit = exitCode; root.finishAction() }
   }
 
-  // sysfs reads are cheap (~1.4 ms per EC byte): sample every 2 s so the
-  // history is already filled when the panel opens.
+  // Les lectures sysfs sont peu coûteuses (~1,4 ms par octet de l'EC) : échantillon toutes les 2 s,
+  // l'historique est donc déjà rempli à l'ouverture du panneau.
   Timer { interval: 2000; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.sample() }
 
   BarIconButton {
@@ -282,7 +284,7 @@ Panel {
       else root.toggle()
     }
 
-    // Spins at a speed proportional to the real CPU fan RPM (fixed when stopped).
+    // Tourne à une vitesse proportionnelle aux tr/min réels du ventilateur CPU (fixe à l'arrêt).
     RotationAnimator on rotation {
       running: (root.boosting || root.spinMs > 0) && !Style.reduceMotion
       from: 0
@@ -321,7 +323,7 @@ Panel {
         anchors.top: parent.top
         spacing: Style.space(14)
 
-        // ---------- Hero: fan icon · title/status ----------
+        // ---------- En-tête : icône du ventilateur · titre et état ----------
         Item {
           width: parent.width
           implicitHeight: Math.max(heroIcon.implicitHeight, heroLabels.implicitHeight)
@@ -377,7 +379,7 @@ Panel {
           }
         }
 
-        // ---------- Live readings ----------
+        // ---------- Mesures en direct ----------
         Column {
           width: parent.width
           spacing: Style.spacing.labelGap
@@ -401,7 +403,7 @@ Panel {
           }
         }
 
-        // ---------- Fan curve ----------
+        // ---------- Courbe des ventilateurs ----------
         PanelSeparator { foreground: root.bar.foreground; visible: root.feat.curve }
 
         Column {
@@ -466,7 +468,7 @@ Panel {
           }
         }
 
-        // ---------- History ----------
+        // ---------- Historique ----------
         Column {
           width: parent.width
           spacing: Style.space(8)
@@ -488,7 +490,7 @@ Panel {
           }
         }
 
-        // ---------- Fan mode ----------
+        // ---------- Mode des ventilateurs ----------
         PanelSeparator { foreground: root.bar.foreground }
 
         ModeSection {
@@ -521,7 +523,7 @@ Panel {
           }
         }
 
-        // ---------- Performance (shift) mode ----------
+        // ---------- Mode de performance (shift) ----------
         PanelSeparator { foreground: root.bar.foreground }
 
         ModeSection {

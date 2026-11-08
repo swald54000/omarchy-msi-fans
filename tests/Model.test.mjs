@@ -121,6 +121,7 @@ test('validAction : seules les valeurs annoncées par le pilote sont acceptées'
 test('writeError', () => {
   assert.equal(M.writeError(0, ''), '')
   assert.ok(M.writeError(1, 'sh: /sys/devices/platform/msi-ec/fan_mode: Permission denied').includes('reconnectez-vous'))
+  assert.ok(M.writeError(1, 'sh: 1: cannot create /sys/x: Permission non accordée').includes('reconnectez-vous'))
   assert.equal(M.writeError(1, 'sh: Invalid argument'), 'écriture impossible')
 })
 test('filterPeak ignore les lectures aberrantes du compte-tours', () => {
