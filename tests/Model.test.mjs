@@ -147,3 +147,31 @@ test('gpuState : pas de GPU dédié → « absent », jamais « veille »', () =
   assert.equal(M.gpuState('0', '', ''), 'absent')
   assert.equal(M.gpuState('0', 'suspended', '0000:02:00.0'), 'veille')
 })
+
+// Les tables de courbes ne changent pas toutes seules : chaque relecture coûte ~1,4 ms par
+// registre de l'EC. Elles ne sont relues qu'au besoin, pas à chaque échantillon.
+test('staticDue : jamais relu en continu quand le panneau est fermé et la courbe connue', () => {
+  for (let tick = 1; tick <= 50; ++tick) assert.equal(M.staticDue(tick, false, true), false)
+})
+
+test('staticDue : panneau ouvert → une relecture tous les 5 échantillons', () => {
+  const dus = []
+  for (let tick = 1; tick <= 20; ++tick) if (M.staticDue(tick, true, true)) dus.push(tick)
+  assert.deepEqual(dus, [5, 10, 15, 20])
+})
+
+test('staticDue : courbe encore inconnue (pilote chargé après le widget) → nouvel essai tous les 5 échantillons', () => {
+  const dus = []
+  for (let tick = 1; tick <= 12; ++tick) if (M.staticDue(tick, false, false)) dus.push(tick)
+  assert.deepEqual(dus, [5, 10])
+})
+
+test('Panel.qml : sample() ne relit que les fichiers qui changent', () => {
+  const qml = readFileSync(new URL('../Panel.qml', import.meta.url), 'utf8')
+  const debut = qml.indexOf('function sample()')
+  const corps = qml.slice(debut, qml.indexOf('files.forEach', debut))
+  for (const fixe of ['cpuCurveFile', 'gpuCurveFile', 'cpuHystFile', 'gpuHystFile', 'usbFile', 'fanModesFile', 'shiftModesFile'])
+    assert.ok(!corps.includes(fixe), fixe + ' ne doit pas être relu à chaque échantillon')
+  for (const vivant of ['cpuTempFile', 'cpuSpeedFile', 'fanModeFile', 'shiftModeFile', 'boostFile', 'fan1File'])
+    assert.ok(corps.includes(vivant), vivant + ' doit rester échantillonné')
+})

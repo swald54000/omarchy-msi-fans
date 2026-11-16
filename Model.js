@@ -162,3 +162,11 @@ function findDgpu(entries) {
   }
   return ""
 }
+
+// Faut-il relire les fichiers qui ne changent pas tout seuls (courbes, hystérésis, partage USB,
+// listes de modes) ? Chaque octet lu coûte ~1,4 ms à l'EC : on ne les relit en continu que
+// panneau ouvert, ou tant que la courbe n'a jamais pu être lue (pilote chargé après le widget).
+function staticDue(tick, opened, haveCurve) {
+  if (!opened && haveCurve) return false
+  return tick % 5 === 0
+}

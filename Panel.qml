@@ -108,7 +108,15 @@ Panel {
   function pct(v) { return isFinite(v) ? v + " %" : "—" }
 
   function refresh() {
-    [fanModeFile, fanModesFile, shiftModeFile, shiftModesFile, boostFile].forEach(function(f) { f.reload() })
+    [fanModeFile, shiftModeFile, boostFile].forEach(function(f) { f.reload() })
+    refreshStatic()
+  }
+
+  // Fichiers qui ne changent qu'après une action (ou un changement de mode) : courbes, hystérésis,
+  // partage USB, listes de modes. Relus au démarrage, à l'ouverture du panneau et après une action.
+  function refreshStatic() {
+    [cpuCurveFile, gpuCurveFile, cpuHystFile, gpuHystFile, usbFile, fanModesFile, shiftModesFile]
+      .forEach(function(f) { f.reload() })
   }
 
   // Cherche de nouveau le hwmon de msi-ec (au plus un lancement par tick d'échantillonnage).
@@ -116,13 +124,14 @@ Panel {
     if (!hwmonProc.running) hwmonProc.running = true
   }
 
-  // Relit chaque fichier sysfs, puis enregistre un échantillon d'historique.
+  // Relit les fichiers sysfs qui changent, puis enregistre un échantillon d'historique.
+  property int sampleTick: 0
   function sample() {
     var files = [cpuTempFile, cpuSpeedFile, gpuTempFile, gpuSpeedFile, gpuRuntimeFile,
-                 cpuCurveFile, gpuCurveFile, cpuHystFile, gpuHystFile, usbFile,
-                 fanModeFile, fanModesFile, shiftModeFile, shiftModesFile, boostFile,
+                 fanModeFile, shiftModeFile, boostFile,
                  fan1File, fan2File, fan3File]
     files.forEach(function(f) { if (f.path !== "") f.reload() })
+    if (Model.staticDue(++sampleTick, opened, cpuCurveFile.value !== "")) refreshStatic()
     if (available) {
       if (hwmonDir !== "" && hwmonStale) {
         // Lecture de fan1_input ratée : le hwmon a pu changer de numéro (rechargement du pilote).
@@ -269,8 +278,9 @@ Panel {
     onExited: function(exitCode, exitStatus) { root.actionExit = exitCode; root.finishAction() }
   }
 
-  // Les lectures sysfs sont peu coûteuses (~1,4 ms par octet de l'EC) : échantillon toutes les 2 s,
-  // l'historique est donc déjà rempli à l'ouverture du panneau.
+  // Chaque octet lu coûte ~1,4 ms à l'EC : toutes les 2 s on ne relit que températures, vitesses,
+  // tachymètres et modes (13 registres) ; les tables de courbes (38 registres) ne le sont qu'au besoin.
+  // L'historique est donc déjà rempli à l'ouverture du panneau.
   Timer { interval: 2000; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.sample() }
 
   BarIconButton {
