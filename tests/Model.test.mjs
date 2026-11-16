@@ -175,3 +175,29 @@ test('Panel.qml : sample() ne relit que les fichiers qui changent', () => {
   for (const vivant of ['cpuTempFile', 'cpuSpeedFile', 'fanModeFile', 'shiftModeFile', 'boostFile', 'fan1File'])
     assert.ok(corps.includes(vivant), vivant + ' doit rester échantillonné')
 })
+
+// Une animation continue dans la barre redessine l'écran en permanence : mesuré sur batterie,
+// 28 % d'un cœur pour la barre, 19 % pour le compositeur et 5 à 7 W, ni PSR ni DRRS possibles.
+test('Panel.qml : aucune animation ne tourne panneau fermé', () => {
+  const qml = readFileSync(new URL('../Panel.qml', import.meta.url), 'utf8')
+  const debut = qml.indexOf('BarIconButton {')
+  const bouton = qml.slice(debut, qml.indexOf('\n  }\n', debut))
+  assert.ok(!/Animator|Animation\s*\{|Behavior/.test(bouton), 'le bouton de la barre ne doit rien animer')
+  const lignes = qml.split('\n')
+  lignes.forEach((ligne, i) => {
+    if (/RotationAnimator|NumberAnimation|SequentialAnimation/.test(ligne)) {
+      const running = lignes.slice(i, i + 4).find((l) => /^\s*running:/.test(l)) || ''
+      assert.ok(running.includes('root.opened'), 'animation ligne ' + (i + 1) + ' : doit dépendre de root.opened')
+    }
+    if (/^\s*iconSpinning:/.test(ligne))
+      assert.ok(ligne.includes('root.opened'), 'iconSpinning ligne ' + (i + 1) + ' : doit dépendre de root.opened')
+  })
+})
+
+test('Panel.qml : dans le panneau ouvert, l’icône tourne à la vitesse du ventilateur', () => {
+  const qml = readFileSync(new URL('../Panel.qml', import.meta.url), 'utf8')
+  const debut = qml.indexOf('id: heroIcon')
+  const hero = qml.slice(debut, qml.indexOf('onRunningChanged', debut))
+  assert.match(hero, /running: root\.opened && \(root\.boosting \|\| root\.spinMs > 0\) && !Style\.reduceMotion/)
+  assert.match(hero, /duration: root\.spinMs > 0 \? root\.spinMs : 900/)
+})

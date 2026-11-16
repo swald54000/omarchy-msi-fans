@@ -14,7 +14,7 @@ noyau `msi-ec` par sysfs : aucun programme intermédiaire, aucun privilège root
 - Historique sur dix minutes de la température CPU et des tr/min.
 - Boutons pour le mode des ventilateurs (auto, silencieux, avancé), le Cooler Boost
   (aussi au clic droit sur l'icône de la barre) et le mode de performance (shift mode).
-- L'icône de la barre tourne à une vitesse proportionnelle aux tr/min du ventilateur CPU.
+- Dans le panneau ouvert, l'icône tourne à une vitesse proportionnelle aux tr/min du ventilateur CPU. L'icône de la barre reste fixe : l'animer redessinait l'écran en continu (5 à 7 W mesurés sur batterie).
 - Affiche « GPU absent » si le portable n'a pas de GPU NVIDIA, et « GPU en veille »
   seulement quand le GPU est réellement suspendu.
 - Si une écriture est refusée, le panneau l'indique (par exemple si vous ne vous êtes pas

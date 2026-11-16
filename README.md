@@ -13,7 +13,7 @@ sysfs: no helper program and no root privileges at run time.
 - Ten-minute history of CPU temperature and fan rpm.
 - Buttons for the fan mode (auto, silent, advanced), Cooler Boost (also on right click
   of the bar icon) and the performance mode (shift mode).
-- The bar icon spins at a speed proportional to the CPU fan rpm.
+- In the open panel, the icon spins at a speed proportional to the CPU fan rpm. The bar icon stays still: animating it redrew the screen continuously (5 to 7 W measured on battery).
 - Says "GPU absent" when the laptop has no NVIDIA GPU, and "GPU en veille" (asleep) only
   when the GPU really is suspended.
 - If a write is refused, the panel says so (for example when you have not logged out and

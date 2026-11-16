@@ -294,15 +294,8 @@ Panel {
       else root.toggle()
     }
 
-    // Tourne à une vitesse proportionnelle aux tr/min réels du ventilateur CPU (fixe à l'arrêt).
-    RotationAnimator on rotation {
-      running: (root.boosting || root.spinMs > 0) && !Style.reduceMotion
-      from: 0
-      to: 360
-      duration: root.spinMs > 0 ? root.spinMs : 900
-      loops: Animation.Infinite
-      onRunningChanged: if (!running) button.rotation = 0
-    }
+    // Icône fixe : la faire tourner ici redessinait la barre en continu (5 à 7 W sur batterie,
+    // et plus de mise en veille de l'écran). La rotation est dans le panneau ouvert.
   }
 
   KeyboardPanel {
@@ -348,11 +341,13 @@ Panel {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
 
+            // Tourne à une vitesse proportionnelle aux tr/min réels du ventilateur CPU
+            // (fixe pendant le Cooler Boost si les tr/min sont inconnus).
             RotationAnimator on rotation {
-              running: root.opened && root.boosting && !Style.reduceMotion
+              running: root.opened && (root.boosting || root.spinMs > 0) && !Style.reduceMotion
               from: 0
               to: 360
-              duration: 900
+              duration: root.spinMs > 0 ? root.spinMs : 900
               loops: Animation.Infinite
               onRunningChanged: if (!running) heroIcon.rotation = 0
             }
@@ -514,7 +509,7 @@ Panel {
           width: parent.width
           iconText: "󰈐"
           iconSize: Style.font.title
-          iconSpinning: root.boosting && !Style.reduceMotion
+          iconSpinning: root.opened && root.boosting && !Style.reduceMotion
           text: root.boosting ? "Cooler Boost : activé" : "Cooler Boost : désactivé"
           fontSize: Style.font.bodySmall
           foreground: root.bar.foreground
