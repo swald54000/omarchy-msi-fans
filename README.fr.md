@@ -10,7 +10,9 @@ noyau `msi-ec` par sysfs : aucun programme intermédiaire, aucun privilège root
 
 - Température CPU et GPU en direct, vitesse des ventilateurs (pourcentage et tr/min) et
   ventilateur auxiliaire.
-- Courbe des ventilateurs (CPU et GPU) avec le point de fonctionnement en direct.
+- Courbe des ventilateurs (CPU et GPU) avec le point de fonctionnement en direct, quand le
+  pilote fournit `fan_curve` (le pilote `msi-ec` d'origine ne le fait pas ; la courbe est
+  alors masquée).
 - Historique sur dix minutes de la température CPU et des tr/min.
 - Boutons pour le mode des ventilateurs (auto, silencieux, avancé), le Cooler Boost
   (aussi au clic droit sur l'icône de la barre) et le mode de performance (shift mode).
@@ -22,7 +24,7 @@ noyau `msi-ec` par sysfs : aucun programme intermédiaire, aucun privilège root
 
 ## Prérequis
 
-- Un portable MSI avec le pilote `msi-ec` corrigé de
+- Un portable MSI avec le pilote `msi-ec` installé par
   [msi-gs76-linux](https://github.com/swald54000/msi-gs76-linux), correctif 1 (pilote et
   règle udev).
 - Votre utilisateur dans le groupe `msi-ec` (le correctif l'y ajoute ; reconnectez-vous

@@ -9,7 +9,8 @@ sysfs: no helper program and no root privileges at run time.
 ## What it does
 
 - Live CPU and GPU temperature, fan speed (percent and rpm) and auxiliary fan.
-- Fan curve chart (CPU and GPU) with the live operating point.
+- Fan curve chart (CPU and GPU) with the live operating point, when the driver exposes
+  `fan_curve` (the upstream `msi-ec` driver does not; the chart is then hidden).
 - Ten-minute history of CPU temperature and fan rpm.
 - Buttons for the fan mode (auto, silent, advanced), Cooler Boost (also on right click
   of the bar icon) and the performance mode (shift mode).
@@ -21,7 +22,7 @@ sysfs: no helper program and no root privileges at run time.
 
 ## Requirements
 
-- An MSI laptop running the patched `msi-ec` driver from
+- An MSI laptop running the `msi-ec` driver installed by
   [msi-gs76-linux](https://github.com/swald54000/msi-gs76-linux), fix 1 (driver and udev
   rule).
 - Your user in the `msi-ec` group (the fix adds it; log out and back in afterwards). The
