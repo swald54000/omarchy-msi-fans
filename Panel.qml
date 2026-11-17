@@ -20,14 +20,12 @@ Panel {
   property int hwmonIdleTicks: 0
   property var history: []
   property int rpmPeak: 0
-  property string curveTab: "cpu"
   property string hwmonDir: ""
 
   readonly property string ecDir: "/sys/devices/platform/msi-ec"
   readonly property string statePath: Quickshell.env("HOME") + "/.local/state/swald.fans"
   readonly property var feat: Model.features({
-    hwmon: hwmonDir, fan1: fan1File.value, fan3: fan3File.value, cpuCurve: cpuCurveFile.value,
-    cpuHyst: cpuHystFile.value, usb: usbFile.value
+    hwmon: hwmonDir, fan1: fan1File.value, fan3: fan3File.value
   })
   // NaN = lecture ratée (fichier vide ou disparu, -ENODATA, -EIO) : affiché « — », jamais 0.
   readonly property real cpuTemp: Model.num(cpuTempFile.value)
@@ -41,8 +39,6 @@ Panel {
     dgpuChecked ? dgpuAddr : undefined)
   readonly property bool gpuAsleep: gpuState === "veille"
   readonly property bool gpuAbsent: gpuState === "absent"
-  readonly property var shownCurve: Model.parseCurve(curveTab === "cpu" ? cpuCurveFile.value : gpuCurveFile.value)
-  readonly property var shownHyst: Model.parseHysteresis(curveTab === "cpu" ? cpuHystFile.value : gpuHystFile.value)
   readonly property int spinMs: Model.spinDuration(cpuRpm)
   // Statut lu dans sysfs ; les listes available_* (une valeur par ligne) deviennent des
   // chaînes séparées par des espaces, comme l'attend Model.validAction.
@@ -64,10 +60,6 @@ Panel {
   // Chaque bouton sélectionnable, dans l'ordre du panneau, pour la navigation au clavier.
   readonly property var actions: {
     var list = []
-    if (feat.curve) {
-      list.push({ attr: "tab", value: "cpu" })
-      list.push({ attr: "tab", value: "gpu" })
-    }
     fanModes.forEach(function(m) { list.push({ attr: "fan_mode", value: m }) })
     list.push({ attr: "cooler_boost", value: boosting ? "off" : "on" })
     shiftModes.forEach(function(m) { list.push({ attr: "shift_mode", value: m }) })
@@ -112,11 +104,10 @@ Panel {
     refreshStatic()
   }
 
-  // Fichiers qui ne changent qu'après une action (ou un changement de mode) : courbes, hystérésis,
-  // partage USB, listes de modes. Relus au démarrage, à l'ouverture du panneau et après une action.
+  // Fichiers qui ne changent pas tout seuls : les listes de modes. Relus au démarrage, à
+  // l'ouverture du panneau et après une action.
   function refreshStatic() {
-    [cpuCurveFile, gpuCurveFile, cpuHystFile, gpuHystFile, usbFile, fanModesFile, shiftModesFile]
-      .forEach(function(f) { f.reload() })
+    [fanModesFile, shiftModesFile].forEach(function(f) { f.reload() })
   }
 
   // Cherche de nouveau le hwmon de msi-ec (au plus un lancement par tick d'échantillonnage).
@@ -131,7 +122,7 @@ Panel {
                  fanModeFile, shiftModeFile, boostFile,
                  fan1File, fan2File, fan3File]
     files.forEach(function(f) { if (f.path !== "") f.reload() })
-    if (Model.staticDue(++sampleTick, opened, cpuCurveFile.value !== "")) refreshStatic()
+    if (Model.staticDue(++sampleTick, opened, fanModesFile.value !== "")) refreshStatic()
     if (available) {
       if (hwmonDir !== "" && hwmonStale) {
         // Lecture de fan1_input ratée : le hwmon a pu changer de numéro (rechargement du pilote).
@@ -154,7 +145,6 @@ Panel {
   }
 
   function apply(attr, value) {
-    if (attr === "tab") { curveTab = value; return }
     if (actionProc.running) return
     if (!Model.validAction(attr, value, status)) return
     actionExit = -1
@@ -220,8 +210,8 @@ Panel {
     }
   }
 
-  // Capteur des tr/min : le hwmon de msi-ec (branche gs76) s'il existe, sinon celui du
-  // pilote msi-wmi-platform du noyau, qui donne les mêmes fan1 à fan3 avec le msi-ec d'origine.
+  // Capteur des tr/min : le hwmon de msi-ec s'il en a un, sinon celui du pilote
+  // msi-wmi-platform du noyau (fan1 à fan3).
   Process {
     id: hwmonProc
     running: true
@@ -246,11 +236,6 @@ Panel {
     id: gpuRuntimeFile
     path: root.dgpuAddr === "" ? "" : "/sys/bus/pci/devices/" + root.dgpuAddr + "/power/runtime_status"
   }
-  SysFile { id: cpuCurveFile; path: root.ecDir + "/cpu/fan_curve" }
-  SysFile { id: gpuCurveFile; path: root.ecDir + "/gpu/fan_curve" }
-  SysFile { id: cpuHystFile; path: root.ecDir + "/cpu/fan_curve_hysteresis" }
-  SysFile { id: gpuHystFile; path: root.ecDir + "/gpu/fan_curve_hysteresis" }
-  SysFile { id: usbFile; path: root.ecDir + "/usb_share" }
   SysFile { id: fanModeFile; path: root.ecDir + "/fan_mode" }
   SysFile { id: fanModesFile; path: root.ecDir + "/available_fan_modes" }
   SysFile { id: shiftModeFile; path: root.ecDir + "/shift_mode" }
@@ -280,7 +265,7 @@ Panel {
   }
 
   // Chaque octet lu coûte ~1,4 ms à l'EC : toutes les 2 s on ne relit que températures, vitesses,
-  // tachymètres et modes (13 registres) ; les tables de courbes (38 registres) ne le sont qu'au besoin.
+  // tachymètres et modes.
   // L'historique est donc déjà rempli à l'ouverture du panneau.
   Timer { interval: 2000; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.sample() }
 
@@ -409,71 +394,6 @@ Panel {
           }
         }
 
-        // ---------- Courbe des ventilateurs ----------
-        PanelSeparator { foreground: root.bar.foreground; visible: root.feat.curve }
-
-        Column {
-          width: parent.width
-          spacing: Style.space(8)
-          visible: root.feat.curve
-
-          Row {
-            width: parent.width
-            spacing: Style.space(6)
-
-            PanelSectionHeader {
-              text: "COURBE"
-              foreground: root.bar.foreground
-              fontFamily: root.bar.fontFamily
-              anchors.verticalCenter: parent.verticalCenter
-            }
-
-            Repeater {
-              model: ["cpu", "gpu"]
-              Button {
-                required property var modelData
-                readonly property int actionIndex: root.actionIndex("tab", String(modelData))
-                text: String(modelData).toUpperCase()
-                fontSize: Style.font.caption
-                foreground: root.bar.foreground
-                fontFamily: root.bar.fontFamily
-                horizontalPadding: Style.spacing.controlPaddingX
-                verticalPadding: Style.spacing.controlPaddingY
-                bordered: true
-                active: root.curveTab === modelData
-                hasCursor: root.cursorActive && root.cursorIndex === actionIndex
-                onClicked: root.apply("tab", String(modelData))
-                onHovered: function(h) {
-                  if (h) {
-                    root.cursorActive = true
-                    root.cursorIndex = actionIndex
-                  }
-                }
-              }
-            }
-
-            Text {
-              anchors.verticalCenter: parent.verticalCenter
-              visible: root.status.fan_mode === "advanced"
-              text: "Courbe appliquée"
-              color: Color.accent
-              font.family: root.bar.fontFamily
-              font.pixelSize: Style.font.caption
-            }
-          }
-
-          CurveChart {
-            width: parent.width
-            curve: root.shownCurve
-            hysteresis: root.shownHyst
-            liveTemp: root.curveTab === "cpu" ? root.cpuTemp : root.gpuTemp
-            liveSpeed: root.curveTab === "cpu" ? root.cpuSpeed : root.gpuSpeed
-            foreground: root.bar.foreground
-            accent: Color.accent
-            fontFamily: root.bar.fontFamily
-          }
-        }
-
         // ---------- Historique ----------
         Column {
           width: parent.width
@@ -537,12 +457,6 @@ Panel {
           attr: "shift_mode"
           modes: root.shiftModes
           current: root.status.shift_mode || ""
-        }
-
-        InfoPair {
-          visible: root.feat.usb
-          label: "Recharge USB portable éteint"
-          value: Model.usbLabel(usbFile.value) || ""
         }
 
         Text {

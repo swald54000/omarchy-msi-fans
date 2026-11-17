@@ -9,8 +9,6 @@ sysfs: no helper program and no root privileges at run time.
 ## What it does
 
 - Live CPU and GPU temperature, fan speed (percent and rpm) and auxiliary fan.
-- Fan curve chart (CPU and GPU) with the live operating point, when the driver exposes
-  `fan_curve` (the upstream `msi-ec` driver does not; the chart is then hidden).
 - Ten-minute history of CPU temperature and fan rpm.
 - Buttons for the fan mode (auto, silent, advanced), Cooler Boost (also on right click
   of the bar icon) and the performance mode (shift mode).

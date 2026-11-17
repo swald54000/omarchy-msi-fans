@@ -17,44 +17,6 @@ function validSample(s) {
   return isFinite(s.cpuTemp) && isFinite(s.cpuRpm)
 }
 
-function ints(text) {
-  var t = String(text || "").trim()
-  if (t === "") return []
-  return t.split(/\s+/).map(function(v) { return Number(v) })
-}
-
-// "s0 t1 s1 … t6 s6" → { temps: [t1..t6], speeds: [s0..s6] }
-function parseCurve(text) {
-  var v = ints(text)
-  if (v.length !== 13 || v.some(function(n) { return !isFinite(n) })) return null
-  var temps = [], speeds = [v[0]]
-  for (var i = 0; i < 6; i++) {
-    temps.push(v[1 + 2 * i])
-    speeds.push(v[2 + 2 * i])
-  }
-  return { temps: temps, speeds: speeds }
-}
-
-function parseHysteresis(text) {
-  var v = ints(text)
-  if (v.length !== 6 || v.some(function(n) { return !isFinite(n) })) return null
-  return v
-}
-
-// Seuils de descente : montée − écart.
-function downThresholds(curve, hyst) {
-  return curve.temps.map(function(t, i) { return t - hyst[i] })
-}
-
-// Vitesse demandée par la courbe en montée.
-function speedAt(curve, temp) {
-  var speed = curve.speeds[0]
-  for (var i = 0; i < curve.temps.length; i++) {
-    if (temp >= curve.temps[i]) speed = curve.speeds[i + 1]
-  }
-  return speed
-}
-
 function pushSample(history, sample, max) {
   var next = history.slice(Math.max(0, history.length + 1 - max))
   next.push(sample)
@@ -86,22 +48,12 @@ function formatRpm(rpm) {
   return n === 0 ? "arrêté" : groupThousands(n) + " tr/min"
 }
 
-function usbLabel(text) {
-  var t = String(text || "").trim()
-  if (t === "on") return "activée"
-  if (t === "off") return "désactivée"
-  return null
-}
-
 // files : textes lus ("" si le fichier est absent) ; hwmon = dossier hwmon des tr/min ("" si absent).
 function features(files) {
   var present = function(t) { return String(t || "").trim() !== "" }
   return {
     rpm: present(files.hwmon),
-    aux: present(files.fan3),
-    curve: parseCurve(files.cpuCurve) !== null,
-    hyst: parseHysteresis(files.cpuHyst) !== null,
-    usb: usbLabel(files.usb) !== null
+    aux: present(files.fan3)
   }
 }
 
@@ -163,10 +115,10 @@ function findDgpu(entries) {
   return ""
 }
 
-// Faut-il relire les fichiers qui ne changent pas tout seuls (courbes, hystérésis, partage USB,
-// listes de modes) ? Chaque octet lu coûte ~1,4 ms à l'EC : on ne les relit en continu que
-// panneau ouvert, ou tant que la courbe n'a jamais pu être lue (pilote chargé après le widget).
-function staticDue(tick, opened, haveCurve) {
-  if (!opened && haveCurve) return false
+// Faut-il relire les fichiers qui ne changent pas tout seuls (listes de modes) ? Chaque octet lu
+// coûte ~1,4 ms à l'EC : on ne les relit en continu que panneau ouvert, ou tant qu'ils n'ont
+// jamais pu être lus (pilote chargé après le widget).
+function staticDue(tick, opened, known) {
+  if (!opened && known) return false
   return tick % 5 === 0
 }

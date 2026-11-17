@@ -9,21 +9,7 @@ vm.createContext(M)
 vm.runInContext(readFileSync(new URL('../Model.js', import.meta.url), 'utf8'), M)
 // Les tableaux créés dans le contexte vm ont un autre prototype : on compare des copies.
 const plain = (v) => JSON.parse(JSON.stringify(v))
-const cpuUsine = { temps: [52, 60, 65, 70, 82, 88], speeds: [0, 45, 50, 60, 65, 70, 75] }
 
-test('parseCurve lit la courbe CPU d’usine', () => {
-  assert.deepEqual(plain(M.parseCurve('0 52 45 60 50 65 60 70 65 82 70 88 75\n')), cpuUsine)
-})
-test('parseCurve rejette un texte vide ou incomplet', () => {
-  assert.equal(M.parseCurve(''), null)
-  assert.equal(M.parseCurve('1 2 3'), null)
-})
-test('speedAt suit les paliers de montée', () => {
-  assert.equal(M.speedAt(cpuUsine, 40), 0)
-  assert.equal(M.speedAt(cpuUsine, 52), 45)
-  assert.equal(M.speedAt(cpuUsine, 64), 50)
-  assert.equal(M.speedAt(cpuUsine, 95), 75)
-})
 test('pushSample garde les 300 derniers sans modifier l’original', () => {
   const h = Array.from({ length: 300 }, (_, i) => ({ t: i }))
   const n = M.pushSample(h, { t: 300 }, 300)
@@ -49,24 +35,12 @@ test('formatRpm', () => {
   assert.equal(M.formatRpm(0), 'arrêté')
   assert.equal(M.formatRpm(NaN), '—')
 })
-test('usbLabel', () => {
-  assert.equal(M.usbLabel('on\n'), 'activée')
-  assert.equal(M.usbLabel('off'), 'désactivée')
-  assert.equal(M.usbLabel(''), null)
+test('features : aucun capteur de tr/min', () => {
+  assert.deepEqual(plain(M.features({ fan1: '', fan3: '' })), { rpm: false, aux: false })
 })
-test('features : pilote d’origine', () => {
-  assert.deepEqual(plain(M.features({ fan1: '', fan3: '', cpuCurve: '', cpuHyst: '', usb: '' })),
-    { rpm: false, aux: false, curve: false, hyst: false, usb: false })
-})
-test('features : pilote gs76, ventilateur auxiliaire à l’arrêt', () => {
-  const f = M.features({ hwmon: '/sys/class/hwmon/hwmon9', fan1: '2891\n', fan3: '0\n', cpuCurve: '0 52 45 60 50 65 60 70 65 82 70 88 75\n',
-    cpuHyst: '7 3 3 3 3 3\n', usb: 'on\n' })
-  assert.deepEqual(plain(f), { rpm: true, aux: true, curve: true, hyst: true, usb: true })
-})
-test('parseHysteresis et downThresholds (profil Default YAMDCC GS76)', () => {
-  assert.deepEqual(plain(M.parseHysteresis('7 3 3 3 3 3\n')), [7, 3, 3, 3, 3, 3])
-  assert.equal(M.parseHysteresis('7 3'), null)
-  assert.deepEqual(plain(M.downThresholds(cpuUsine, [7, 3, 3, 3, 3, 3])), [45, 57, 62, 67, 79, 85])
+test('features : capteur présent, ventilateur auxiliaire à l’arrêt', () => {
+  const f = M.features({ hwmon: '/sys/class/hwmon/hwmon9', fan1: '2891\n', fan3: '0\n' })
+  assert.deepEqual(plain(f), { rpm: true, aux: true })
 })
 test('rpmScale', () => {
   assert.equal(M.rpmScale(0, []), 6000)
@@ -96,9 +70,9 @@ test('validSample : échantillon avec lecture ratée ignoré', () => {
   assert.equal(M.validSample({ t: 1, cpuTemp: 60, cpuRpm: NaN }), false)
 })
 test('features : rpm dépend de la présence du hwmon, pas d’une lecture réussie', () => {
-  const f = M.features({ hwmon: '/sys/class/hwmon/hwmon9', fan1: '', fan3: '', cpuCurve: '', cpuHyst: '', usb: '' })
+  const f = M.features({ hwmon: '/sys/class/hwmon/hwmon9', fan1: '', fan3: '' })
   assert.equal(f.rpm, true)
-  assert.equal(M.features({ hwmon: '', fan1: '', fan3: '', cpuCurve: '', cpuHyst: '', usb: '' }).rpm, false)
+  assert.equal(M.features({ hwmon: '', fan1: '', fan3: '' }).rpm, false)
 })
 test('gpuState : température illisible et GPU actif → « inconnu »', () => {
   assert.equal(M.gpuState('', 'active'), 'inconnu')
@@ -148,9 +122,9 @@ test('gpuState : pas de GPU dédié → « absent », jamais « veille »', () =
   assert.equal(M.gpuState('0', 'suspended', '0000:02:00.0'), 'veille')
 })
 
-// Les tables de courbes ne changent pas toutes seules : chaque relecture coûte ~1,4 ms par
+// Les listes de modes ne changent pas toutes seules : chaque relecture coûte ~1,4 ms par
 // registre de l'EC. Elles ne sont relues qu'au besoin, pas à chaque échantillon.
-test('staticDue : jamais relu en continu quand le panneau est fermé et la courbe connue', () => {
+test('staticDue : jamais relu en continu quand le panneau est fermé et les listes connues', () => {
   for (let tick = 1; tick <= 50; ++tick) assert.equal(M.staticDue(tick, false, true), false)
 })
 
@@ -160,7 +134,7 @@ test('staticDue : panneau ouvert → une relecture tous les 5 échantillons', ()
   assert.deepEqual(dus, [5, 10, 15, 20])
 })
 
-test('staticDue : courbe encore inconnue (pilote chargé après le widget) → nouvel essai tous les 5 échantillons', () => {
+test('staticDue : listes encore inconnues (pilote chargé après le widget) → nouvel essai tous les 5 échantillons', () => {
   const dus = []
   for (let tick = 1; tick <= 12; ++tick) if (M.staticDue(tick, false, false)) dus.push(tick)
   assert.deepEqual(dus, [5, 10])
@@ -170,7 +144,7 @@ test('Panel.qml : sample() ne relit que les fichiers qui changent', () => {
   const qml = readFileSync(new URL('../Panel.qml', import.meta.url), 'utf8')
   const debut = qml.indexOf('function sample()')
   const corps = qml.slice(debut, qml.indexOf('files.forEach', debut))
-  for (const fixe of ['cpuCurveFile', 'gpuCurveFile', 'cpuHystFile', 'gpuHystFile', 'usbFile', 'fanModesFile', 'shiftModesFile'])
+  for (const fixe of ['fanModesFile', 'shiftModesFile'])
     assert.ok(!corps.includes(fixe), fixe + ' ne doit pas être relu à chaque échantillon')
   for (const vivant of ['cpuTempFile', 'cpuSpeedFile', 'fanModeFile', 'shiftModeFile', 'boostFile', 'fan1File'])
     assert.ok(corps.includes(vivant), vivant + ' doit rester échantillonné')
