@@ -93,7 +93,7 @@ function usbLabel(text) {
   return null
 }
 
-// files : textes lus ("" si le fichier est absent) ; hwmon = dossier hwmon msi_ec ("" si absent).
+// files : textes lus ("" si le fichier est absent) ; hwmon = dossier hwmon des tr/min ("" si absent).
 function features(files) {
   var present = function(t) { return String(t || "").trim() !== "" }
   return {

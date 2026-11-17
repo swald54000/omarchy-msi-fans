@@ -220,11 +220,12 @@ Panel {
     }
   }
 
-  // hwmon de msi-ec (branche gs76) ; vide avec le pilote d'origine.
+  // Capteur des tr/min : le hwmon de msi-ec (branche gs76) s'il existe, sinon celui du
+  // pilote msi-wmi-platform du noyau, qui donne les mêmes fan1 à fan3 avec le msi-ec d'origine.
   Process {
     id: hwmonProc
     running: true
-    command: ["sh", "-c", "mkdir -p \"$1\"; h=$(grep -lx msi_ec /sys/class/hwmon/hwmon*/name | head -n1) && dirname \"$h\"", "sh", root.statePath]
+    command: ["sh", "-c", "mkdir -p \"$1\"; for n in msi_ec msi_wmi_platform; do h=$(grep -lx \"$n\" /sys/class/hwmon/hwmon*/name | head -n1); [ -n \"$h\" ] && dirname \"$h\" && break; done", "sh", root.statePath]
     stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.hwmonDir = text.trim() }
   }
 
