@@ -1,0 +1,10 @@
+{
+  "extraKnownMarketplaces": {
+    "grille-neon": {
+      "source": { "source": "github", "repo": "swald54000/grille-neon" }
+    }
+  },
+  "enabledPlugins": {
+    "grille-neon@grille-neon": true
+  }
+}
